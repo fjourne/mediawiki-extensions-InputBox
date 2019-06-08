@@ -84,22 +84,38 @@ class InputBoxHooks {
 		$request,
 		$wiki
 	) {
+		
 		if ( $wiki->getAction() !== 'edit' && $request->getText( 'veaction' ) !== 'edit' ) {
 			// not our problem
 			return true;
 		}
-		if ( $request->getText( 'prefix', '' ) === '' ) {
+
+		$params = $request->getValues();
+		$titleaspreloadparam = ( isset( $params['titleaspreloadparam'] ) && $params['titleaspreloadparam'] );
+		$hasprefix = $request->getText( 'prefix', '' ) !== '' ;
+
+		if ( !( $hasprefix || $titleaspreloadparam ) ) {
 			// Fine
 			return true;
 		}
 
-		$params = $request->getValues();
-		$title = $params['prefix'];
-		if ( isset( $params['title'] ) ) {
-			$title .= $params['title'];
+		if ( $hasprefix ) {
+			$title = $params['prefix'];
+			if ( isset( $params['title'] ) ) {
+				$title .= $params['title'];
+			}
+			unset( $params['prefix'] );
+			$params['title'] = $title;
 		}
-		unset( $params['prefix'] );
-		$params['title'] = $title;
+		
+		if ( $titleaspreloadparam ){
+			if ( isset( $params['preloadparams'] ) ) {
+				array_unshift( $params['preloadparams'], $title );
+			} else {
+				$params['preloadparams'] = array( $title );
+			}
+			unset ( $params['titleaspreloadparam'] );
+		}
 
 		global $wgScript;
 		$output->redirect( wfAppendQuery( $wgScript, $params ), '301' );

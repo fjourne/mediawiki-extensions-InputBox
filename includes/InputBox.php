@@ -18,6 +18,7 @@ class InputBox {
 	private $mWidth = 50;
 	private $mPreload = null;
 	private $mPreloadparams = null;
+	private $mTitleAsPreloadparam = false;
 	private $mEditIntro = null;
 	private $mUseVE = null;
 	private $mSummary = null;
@@ -412,6 +413,9 @@ class InputBox {
 				$htmlOut .= Html::hidden( 'preloadparams[]', $preloadparams );
 			}
 		}
+		if ( $this->mTitleAsPreloadparam !== false ) {
+			$htmlOut .= Html::hidden( 'titleaspreloadparam', $this->mTitleAsPreloadparam );
+		}
 		if ( $this->mEditIntro !== null ) {
 			$htmlOut .= Html::hidden( 'editintro', $this->mEditIntro );
 		}
@@ -552,6 +556,9 @@ class InputBox {
 				$htmlOut .= Html::hidden( 'preloadparams[]', $preloadparams );
 			}
 		}
+		if ( $this->mTitleAsPreloadparam !== null ) {
+			$htmlOut .= Html::hidden( 'titleaspreloadparam', $this->mTitleAsPreloadparam );
+		}
 		if ( $this->mEditIntro !== null ) {
 			$htmlOut .= Html::hidden( 'editintro', $this->mEditIntro );
 		}
@@ -617,6 +624,7 @@ class InputBox {
 			'type' => 'mType',
 			'width' => 'mWidth',
 			'preload' => 'mPreload',
+			'titleaspreloadparam' => 'mTitleAsPreloadparam',
 			'page' => 'mPage',
 			'editintro' => 'mEditIntro',
 			'useve' => 'mUseVE',
