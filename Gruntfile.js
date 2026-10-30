@@ -1,5 +1,7 @@
 /* eslint-env node */
 module.exports = function ( grunt ) {
+	const conf = grunt.file.readJSON( 'extension.json' );
+
 	grunt.loadNpmTasks( 'grunt-eslint' );
 	grunt.loadNpmTasks( 'grunt-banana-checker' );
 	grunt.loadNpmTasks( 'grunt-stylelint' );
@@ -7,8 +9,6 @@ module.exports = function ( grunt ) {
 	grunt.initConfig( {
 		eslint: {
 			options: {
-				reportUnusedDisableDirectives: true,
-				extensions: [ '.js', '.json' ],
 				cache: true
 			},
 			all: [
@@ -16,12 +16,13 @@ module.exports = function ( grunt ) {
 				'!{lib,vendor,node_modules}/**'
 			]
 		},
-		banana: {
-			all: 'i18n/'
-		},
+		banana: conf.MessagesDirs,
 		stylelint: {
+			options: {
+				cache: true
+			},
 			all: [
-				'**/*.css',
+				'**/*.{css,less}',
 				'!node_modules/**',
 				'!vendor/**'
 			]

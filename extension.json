@@ -12,7 +12,7 @@
 	"url": "https://www.mediawiki.org/wiki/Extension:InputBox",
 	"descriptionmsg": "inputbox-desc",
 	"requires": {
-		"MediaWiki": ">= 1.30.0"
+		"MediaWiki": ">= 1.46"
 	},
 	"license-name": "MIT",
 	"type": "parserhook",
@@ -21,27 +21,31 @@
 			"i18n"
 		]
 	},
-	"AutoloadClasses": {
-		"InputBoxHooks": "includes/InputBoxHooks.php",
-		"InputBox": "includes/InputBox.php"
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\InputBox\\": "includes/"
 	},
 	"ResourceModules": {
-		"ext.inputBox.styles": {
-			"styles": "ext.inputBox.styles.css",
-			"targets": [
-				"mobile",
-				"desktop"
+		"ext.inputBox": {
+			"packageFiles": [
+				"ext.inputBox.js"
 			]
 		},
-		"ext.inputBox": {
-			"scripts": "ext.inputBox.js",
-			"dependencies": [
-				"jquery.throttle-debounce"
+		"ext.inputBox.styles": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"codexStyleOnly": true,
+			"codexComponents": [
+				"CdxButton",
+				"CdxCheckbox",
+				"CdxTextInput"
 			],
-			"targets": [
-				"mobile",
-				"desktop"
-			]
+			"styles": {
+				"ext.inputBox.styles.less": {
+					"media": "screen"
+				},
+				"ext.inputBox.print.less": {
+					"media": "print"
+				}
+			}
 		}
 	},
 	"ResourceFileModulePaths": {
@@ -49,15 +53,18 @@
 		"remoteExtPath": "InputBox/resources"
 	},
 	"Hooks": {
-		"ParserFirstCallInit": [
-			"InputBoxHooks::register"
-		],
-		"MediaWikiPerformAction": [
-			"InputBoxHooks::onMediaWikiPerformAction"
-		],
-		"SpecialPageBeforeExecute": [
-			"InputBoxHooks::onSpecialPageBeforeExecute"
-		]
+		"ParserFirstCallInit": "main",
+		"MediaWikiPerformAction": "main",
+		"SpecialPageBeforeExecute": "main"
 	},
-	"manifest_version": 1
+	"HookHandlers": {
+		"main": {
+			"class": "MediaWiki\\Extension\\InputBox\\InputBoxHooks",
+			"services": [
+				"MainConfig",
+				"ExtensionRegistry"
+			]
+		}
+	},
+	"manifest_version": 2
 }

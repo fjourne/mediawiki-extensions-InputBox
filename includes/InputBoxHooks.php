@@ -6,59 +6,91 @@
  * @ingroup Extensions
  */
 
+namespace MediaWiki\Extension\InputBox;
+
+use MediaWiki\Actions\ActionEntryPoint;
+use MediaWiki\Config\Config;
+use MediaWiki\Hook\MediaWikiPerformActionHook;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Page\Article;
+use MediaWiki\Parser\Hook\ParserFirstCallInitHook;
+use MediaWiki\Parser\Parser;
+use MediaWiki\Parser\PPFrame;
+use MediaWiki\Registration\ExtensionRegistry;
+use MediaWiki\Request\WebRequest;
+use MediaWiki\SpecialPage\Hook\SpecialPageBeforeExecuteHook;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\Title\Title;
+use MediaWiki\User\User;
+
 /**
  * InputBox hooks
  */
-class InputBoxHooks {
-
-	/**
-	 * Initialization
-	 * @param Parser &$parser
-	 * @return true
-	 */
-	public static function register( Parser &$parser ) {
-		// Register the hook with the parser
-		$parser->setHook( 'inputbox', [ 'InputBoxHooks', 'render' ] );
-
-		// Continue
-		return true;
+class InputBoxHooks implements
+	ParserFirstCallInitHook,
+	SpecialPageBeforeExecuteHook,
+	MediaWikiPerformActionHook
+{
+	public function __construct(
+		private readonly Config $config,
+		private readonly ExtensionRegistry $extensionRegistry,
+	) {
 	}
 
 	/**
-	 * Prepend prefix to wpNewTitle if necessary
-	 * @param SpecialPage $special
-	 * @param string $subPage
-	 * @return true
+	 * Initialization
+	 * @param Parser $parser
 	 */
-	public static function onSpecialPageBeforeExecute( $special, $subPage ) {
+	public function onParserFirstCallInit( $parser ) {
+		// Register the hook with the parser
+		$parser->setHook( 'inputbox', [ $this, 'render' ] );
+	}
+
+	/**
+	 * If necssary, prepend prefix to wpNewTitle, or update the search parameter with the searchfilter.
+	 *
+	 * @param SpecialPage $special
+	 * @param string|null $subPage Subpage string, or null if no subpage was specified
+	 * @return bool|void True or no return value to continue or false to prevent execution
+	 */
+	public function onSpecialPageBeforeExecute( $special, $subPage ) {
 		$request = $special->getRequest();
 		$prefix = $request->getText( 'prefix', '' );
 		$title = $request->getText( 'wpNewTitle', '' );
 		$search = $request->getText( 'search', '' );
 		$searchfilter = $request->getText( 'searchfilter', '' );
-		if ( $special->getName() == 'Movepage' && $prefix !== '' && $title !== '' ) {
+		if ( $special->getName() === 'Movepage' && $prefix !== '' && $title !== '' ) {
 			$request->setVal( 'wpNewTitle', $prefix . $title );
 			$request->unsetVal( 'prefix' );
 		}
-		if ( $special->getName() == 'Search' && $searchfilter !== '' ) {
-			$request->setVal( 'search', $search . ' ' . $searchfilter );
+		if ( in_array( $special->getName(), [ 'Search', 'MediaSearch' ] ) && $searchfilter !== '' ) {
+			// Redirect to Special:Search after modifying the search parameter.
+			$searchQuery = $request->getQueryValues();
+			$searchQuery[ 'search' ] = trim( $search ) . ' ' . $searchfilter;
+			unset( $searchQuery['searchfilter'], $searchQuery['title'] );
+			$special->getOutput()->redirect( $special->getPageTitle()->getFullURL( $searchQuery ) );
+			return false;
 		}
-		return true;
 	}
 
 	/**
 	 * Render the input box
-	 * @param string $input
+	 * @param string|null $input
 	 * @param array $args
 	 * @param Parser $parser
+	 * @param PPFrame $frame
 	 * @return string
 	 */
-	public static function render( $input, $args, Parser $parser ) {
+	public function render( $input, $args, Parser $parser, PPFrame $frame ) {
+		if ( $input === null ) {
+			return '';
+		}
+
 		// Create InputBox
-		$inputBox = new InputBox( $parser );
+		$inputBox = new InputBox( $this->config, $this->extensionRegistry, $parser );
 
 		// Configure InputBox
-		$inputBox->extractOptions( $parser->replaceVariables( $input ) );
+		$inputBox->extractOptions( $parser->replaceVariables( $input, $frame ) );
 
 		// Return output
 		return $inputBox->render();
@@ -73,10 +105,10 @@ class InputBoxHooks {
 	 * @param Title $title
 	 * @param User $user
 	 * @param WebRequest $request
-	 * @param MediaWiki $wiki
+	 * @param ActionEntryPoint $wiki
 	 * @return bool
 	 */
-	public static function onMediaWikiPerformAction(
+	public function onMediaWikiPerformAction(
 		$output,
 		$article,
 		$title,
@@ -84,30 +116,30 @@ class InputBoxHooks {
 		$request,
 		$wiki
 	) {
-		
-		if ( $wiki->getAction() !== 'edit' && $request->getText( 'veaction' ) !== 'edit' ) {
+
+		// In order to check for 'action=edit' in URL parameters, even if another extension overrides
+		// the action, we must not use getActionName() here. (T337436)
+		if ( $request->getRawVal( 'action' ) !== 'edit' && $request->getRawVal( 'veaction' ) !== 'edit' ) {
 			// not our problem
 			return true;
+		
 		}
 
 		$params = $request->getValues();
 		$titleaspreloadparam = ( isset( $params['titleaspreloadparam'] ) && $params['titleaspreloadparam'] );
-		$hasprefix = $request->getText( 'prefix', '' ) !== '' ;
-
-		if ( !( $hasprefix || $titleaspreloadparam ) ) {
-			// Fine
+		$prefix = $request->getText( 'prefix', '' );
+		if ( $prefix === '' && !$titleaspreloadparam) {
+				// Fine
 			return true;
 		}
-
-		if ( $hasprefix ) {
-			$title = $params['prefix'];
-			if ( isset( $params['title'] ) ) {
-				$title .= $params['title'];
-			}
+		
+		if ($prefix !== '') {
+			$title = $prefix . $request->getText( 'title', '' );
+			$params = $request->getValues();
 			unset( $params['prefix'] );
 			$params['title'] = $title;
 		}
-		
+
 		if ( $titleaspreloadparam ){
 			if ( isset( $params['preloadparams'] ) ) {
 				array_unshift( $params['preloadparams'], $title );
@@ -117,8 +149,7 @@ class InputBoxHooks {
 			unset ( $params['titleaspreloadparam'] );
 		}
 
-		global $wgScript;
-		$output->redirect( wfAppendQuery( $wgScript, $params ), '301' );
+		$output->redirect( wfAppendQuery( $output->getConfig()->get( 'Script' ), $params ), '301' );
 		return false;
 	}
 }

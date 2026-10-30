@@ -1,11 +1,12 @@
 {
 	"@metadata": {
 		"authors": [
+			"Ilja.mos",
 			"Mashoi7",
-			"Ilja.mos"
+			"Ruppijeva"
 		]
 	},
-	"inputbox-tryexact": "Opi tarkah yhtehpädijiä",
+	"inputbox-tryexact": "Tarku vastineh",
 	"inputbox-searchfulltext": "Eči kogo tekstal",
 	"inputbox-createarticle": "Luaji sivu",
 	"inputbox-movearticle": "Siirrä sivu",
