@@ -1,8 +1,11 @@
 {
 	"@metadata": {
 		"authors": [
-			"Don Alessandro"
+			"Don Alessandro",
+			"TayfunEt.",
+			"Zolgoyo"
 		]
 	},
+	"inputbox-tryexact": "Tam uyğunlıqnı deñeñiz",
 	"inputbox-createarticle": "Saifeni yarat"
 }
